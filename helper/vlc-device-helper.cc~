@@ -1,0 +1,137 @@
+
+#include "vlc-device-helper.h"
+#include "ns3/double.h"
+
+
+namespace ns3 {
+
+VlcDeviceHelper::VlcDeviceHelper() {
+
+
+}
+
+void VlcDeviceHelper::CreateTransmitter(std::string TXName){
+	m_TXDevices[TXName] = CreateObject<VlcTxNetDevice>();
+}
+
+void VlcDeviceHelper::CreateReceiver(std::string RXName){
+	m_RXDevices[RXName] = CreateObject<VlcRxNetDevice>();
+}
+
+void VlcDeviceHelper::SetTrasmitterParameter(std::string devName, std::string paramName, double value ){
+	
+	
+	if(paramName=="Azimuth"){
+		m_TXDevices[devName]->SetAzmuth(value);
+		return;
+	} else if(paramName=="Elevation"){
+		m_TXDevices[devName]->SetElevation(value);
+		return;
+	} else if(paramName=="DataRateInMBPS"){
+		std::ostringstream strs;
+		strs << value;
+		std::string str = strs.str();
+		str = str + "Mbps";
+		DataRate drate(str);
+		m_TXDevices[devName]->SetDataRate(drate);
+		return;
+	} else if(paramName=="FrameSize"){
+		std::cout << "Frame Size not present" << std::endl;
+		return;
+	}
+	
+	m_factory.SetTypeId("VlcTxNetDevice");
+	m_factory.Set(paramName, DoubleValue(value));	
+}
+
+void VlcDeviceHelper::SetTrasmitterPosition(std::string devName, double x, double y, double z) {
+	m_TXDevices[devName]->SetPosition(Vector(x,y,z));
+}
+
+void VlcDeviceHelper::SetReceiverPosition(std::string devName, double x, double y, double z) {
+	m_RXDevices[devName]->SetPosition(Vector(x,y,z));
+}
+
+void VlcDeviceHelper::SetTrasmitterBoost(std::string devName) {
+	m_TXDevices[devName]->BoostSignal();
+}
+
+void VlcDeviceHelper::SetReceiverParameter(std::string devName, std::string paramName, double value ) {
+	if(paramName=="IncidenceAngle") {
+		m_RXDevices[devName]->SetIncidenceAngle(value);
+		return;
+	} else if(paramName=="SetModulationScheme") {
+		if(value==0) {
+			m_RXDevices[devName]->SetScheme( "OOK" );
+		} else if(value==1) {
+			m_RXDevices[devName]->SetScheme("PAM");
+		} else if(value==2) {
+			m_RXDevices[devName]->SetScheme("VPPM");
+		}
+		return;
+	} else if(paramName=="DutyCycle") {
+		m_RXDevices[devName]->SetAlpha(value);
+		return;
+	} else if(paramName=="Beta") {
+		m_RXDevices[devName]->SetBeta(value);
+		return;
+	}
+	
+	m_factory.SetTypeId("VlcRxNetDevice");
+	m_factory.Set(paramName, DoubleValue(value));	
+}
+
+double VlcDeviceHelper::GetReceiverParameter(std::string devName,std::string paramName){
+	if(paramName=="BER"){
+		return this->m_RXDevices[devName]->CalculateErrorRateForErrorModel();
+	}
+	else if(paramName=="SER"){
+		return this->m_RXDevices[devName]->CalculateErrorRateForErrorModel();
+	}
+	return 0;
+}
+
+std::vector<double> VlcDeviceHelper::GenerateSignal(int size,double dutyRatio,double bias, double VMax,double VMin){
+
+	std::vector<double> result;
+	result.reserve(size);
+
+	for(int i=0;i<size;i++){
+
+		if(i<size*dutyRatio){
+			result.push_back(VMax+bias);
+		}
+		else{
+			result.push_back(VMin+bias);
+		}
+	}
+
+	return result;
+
+}
+
+void VlcDeviceHelper::SetTXSignal(std::string devName,int size,double dutyRatio,double bias, double VMax,double VMin){
+
+	std::vector<double> r =  GenerateSignal(size, dutyRatio, bias, VMax, VMin) ;
+	m_TXDevices[devName]->SetSignal(r);
+
+}
+
+ns3::Ptr<VlcTxNetDevice> VlcDeviceHelper::GetTransmitter(std::string devName){
+
+	return this->m_TXDevices[devName];
+}
+
+ns3::Ptr<VlcRxNetDevice> VlcDeviceHelper::GetReceiver(std::string devName){
+
+	return this->m_RXDevices[devName];
+}
+
+
+
+VlcDeviceHelper::~VlcDeviceHelper() {
+	this->m_RXDevices.clear();
+	this->m_TXDevices.clear();
+}
+
+} /* namespace vlc */
